@@ -2,6 +2,8 @@
 pragma solidity ^0.8.27;
 
 abstract contract Context {
+	address _zeroAddress = address(0);
+
 	function _msgSender() internal view virtual returns (address) {
 		return msg.sender;
 	}

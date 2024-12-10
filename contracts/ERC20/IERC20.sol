@@ -12,7 +12,7 @@ interface IERC20 {
 
 	function transfer(address to, uint256 value) external returns (bool);
 
-	function allowance(address _owner, address spender) external view returns (uint256);
+	function allowance(address owner_, address spender) external view returns (uint256);
 
 	function approve(address spender, uint256 value) external returns (bool);
 
