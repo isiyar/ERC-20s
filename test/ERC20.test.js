@@ -62,7 +62,46 @@ describe("ERC20", () => {
 		});
 	});
 
-	// describe("_burn", () => {
+	describe("_burn", () => {
+		beforeEach("minting", async () => {
+			await token.connect(owner)._mint(user, initialSupply);
+		});
 
-	// });
+		it("does not burn on a zero account", async () => {
+			await expect(
+				token.connect(owner)._burn(ethers.ZeroAddress, initialSupply)
+			)
+				.to.be.revertedWithCustomError(token, "ERC20InvalidSender")
+				.withArgs(ethers.ZeroAddress);
+		});
+
+		describe("burn for non-zero account", () => {
+			it("burn more than on balance", async () => {
+				await expect(token.connect(owner)._burn(user, initialSupply + 1n))
+					.to.be.revertedWithCustomError(token, "ERC20InsufficientBalance")
+					.withArgs(user, initialSupply, initialSupply + 1n);
+			});
+
+			describe("after burning", () => {
+				let tx;
+				beforeEach("burn", async () => {
+					tx = await token.connect(owner)._burn(user, initialSupply);
+				});
+
+				it("check total supply", async () => {
+					expect(await token.totalSupply()).to.equal(0);
+				});
+
+				it("check user balance", async () => {
+					await expect(tx).to.changeTokenBalance(token, user, -initialSupply);
+				});
+
+				it("emits Transfer event", async () => {
+					await expect(tx)
+						.to.emit(token, "Transfer")
+						.withArgs(user, ethers.ZeroAddress, initialSupply);
+				});
+			});
+		});
+	});
 });
