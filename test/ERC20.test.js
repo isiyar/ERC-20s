@@ -104,4 +104,18 @@ describe("ERC20", () => {
 			});
 		});
 	});
+
+	describe("_update", () => {
+		const value = 10n
+		let totalSupply;
+
+		beforeEach(async () => {
+			totalSupply = await token.totalSupply();
+		});
+
+		it("from zero address", async () => {
+			const tx = await token.$_update(ethers.ZeroAddress, user, value);
+			expect()
+		});
+	});
 });
