@@ -105,17 +105,58 @@ describe("ERC20", () => {
 		});
 	});
 
-	describe("_update", () => {
-		const value = 10n
-		let totalSupply;
-
-		beforeEach(async () => {
-			totalSupply = await token.totalSupply();
+	describe("usage", () => {
+		beforeEach("minting", async () => {
+			await token.connect(owner)._mint(owner, initialSupply);
 		});
 
-		it("from zero address", async () => {
-			const tx = await token.$_update(ethers.ZeroAddress, user, value);
-			expect()
+		it("check total supply", async () => {
+			expect(await token.totalSupply()).to.equal(initialSupply);
+		});
+
+		describe("balanceOf", () => {
+			it("returns zero if there are no tokens on the account", async () => {
+				const balance = await token.balanceOf(user);
+				expect(balance).to.equal(0);
+			});
+
+			it("returns the balance if there are tokens on the account", async () => {
+				const balance = await token.balanceOf(owner);
+				expect(balance).to.equal(await token.totalSupply());
+			});
+		});
+
+		describe("transfer", () => {
+			describe("the recipient address is not zero", () => {
+				it("the user sends more than his balance", async () => {
+					const userBalance = await token.balanceOf(user);
+					const value = userBalance + 1n;
+					await expect(token.connect(user).transfer(owner, value))
+						.to.be.revertedWithCustomError(token, "ERC20InsufficientBalance")
+						.withArgs(user, userBalance, value);
+				});
+
+				describe("the user sends the entire balance", () => {
+					let value;
+					let tx;
+					beforeEach(async () => {
+						value = await token.balanceOf(owner);
+						tx = await token.connect(owner).transfer(user, value);
+					});
+
+					it("transfers the appropriate value", async () => {
+						expect(tx).to.changeTokenBalance(
+							token,
+							[owner, user],
+							[-value, value]
+						);
+					});
+
+					it("emits a transfer event", async () => {
+						expect(tx).to.emit(token, "Transfer").withArgs(owner, user, value);
+					});
+				});
+			});
 		});
 	});
 });
