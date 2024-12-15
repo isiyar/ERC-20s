@@ -156,6 +156,27 @@ describe("ERC20", () => {
 						expect(tx).to.emit(token, "Transfer").withArgs(owner, user, value);
 					});
 				});
+
+				describe("the user sends zero tokens", () => {
+					let tx;
+					beforeEach(async () => {
+						tx = await token.connect(user).transfer(owner, 0n);
+					});
+
+					it("transfers the appropriate value", async () => {
+						expect(tx).to.changeTokenBalance(token, [owner, user], [0n, 0n]);
+					});
+
+					it("emits a transfer event", async () => {
+						expect(tx).to.emit(token, "Transfer").withArgs(owner, user, 0n);
+					});
+				});
+			});
+
+			it("the recipient address is zero", async () => {
+				await expect(token.connect(owner).transfer(ethers.ZeroAddress, 0n))
+					.to.be.revertedWithCustomError(token, "ERC20InvalidReceiver")
+					.withArgs(ethers.ZeroAddress);
 			});
 		});
 	});
