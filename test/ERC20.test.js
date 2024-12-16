@@ -9,10 +9,11 @@ const initialSupply = 1000n;
 describe("ERC20", () => {
 	let owner;
 	let user;
+	let other;
 	let token;
 
 	beforeEach(async () => {
-		[owner, user] = await ethers.getSigners();
+		[owner, user, other] = await ethers.getSigners();
 		const tokenContract = await ethers.getContractFactory(
 			"TokenContract",
 			owner
@@ -179,5 +180,49 @@ describe("ERC20", () => {
 					.withArgs(ethers.ZeroAddress);
 			});
 		});
+
+		describe("transfer from", () => {
+			const value = 50n;
+			describe("token owner is not a zero address", () => {
+				describe("token recipient is not a zero address", () => {
+					beforeEach(async () => {
+						await token.connect(owner).approve(user, value);
+					});
+
+					describe("the sender has sufficient funds", () => {
+						let tx;
+						beforeEach(async () => {
+							tx = await token.connect(user).transferFrom(owner, other, value);
+						});
+
+						it("transfers the requested value", async () => {
+							expect(tx).to.changeTokenBalance(
+								token,
+								[owner, other],
+								[-value, value]
+							);
+						});
+
+						it("reduces the spender allowance", async () => {
+							expect(await token.allowance(owner, user)).to.equal(0n);
+						});
+
+						it("emits a transfer event", async () => {
+							expect(tx)
+								.to.emit(token, "Transfer")
+								.withArgs(owner, other, value);
+						});
+					});
+
+					describe("the sender has insufficient funds", () => {});
+				});
+
+				describe("token recipient is a zero address", () => {});
+			});
+
+			describe("token owner is a zero address", () => {});
+		});
+
+		describe("approve", () => {});
 	});
 });
