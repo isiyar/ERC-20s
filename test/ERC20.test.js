@@ -182,47 +182,112 @@ describe("ERC20", () => {
 		});
 
 		describe("transfer from", () => {
-			const value = 50n;
 			describe("token owner is not a zero address", () => {
 				describe("token recipient is not a zero address", () => {
-					beforeEach(async () => {
-						await token.connect(owner).approve(user, value);
-					});
-
 					describe("the sender has sufficient funds", () => {
-						let tx;
+						const value = 50n;
 						beforeEach(async () => {
-							tx = await token.connect(user).transferFrom(owner, other, value);
+							await token.connect(owner).approve(user, initialSupply);
 						});
 
-						it("transfers the requested value", async () => {
-							expect(tx).to.changeTokenBalance(
-								token,
-								[owner, other],
-								[-value, value]
+						describe("the token owner has enough balance", () => {
+							let tx;
+							beforeEach(async () => {
+								tx = await token
+									.connect(user)
+									.transferFrom(owner, other, value);
+							});
+
+							it("transfers the requested value", async () => {
+								expect(tx).to.changeTokenBalance(
+									token,
+									[owner, other],
+									[-value, value]
+								);
+							});
+
+							it("reduces the spender allowance", async () => {
+								expect(await token.allowance(owner, user)).to.equal(
+									initialSupply - value
+								);
+							});
+
+							it("emits a transfer event", async () => {
+								expect(tx)
+									.to.emit(token, "Transfer")
+									.withArgs(owner, other, value);
+							});
+						});
+
+						it("the token owner has not enough balance", async () => {
+							await token.connect(owner).transfer(user, value);
+							const ownerBalance = await token.balanceOf(owner);
+							await expect(
+								token.connect(user).transferFrom(owner, other, initialSupply)
+							)
+								.to.revertedWithCustomError(token, "ERC20InsufficientBalance")
+								.withArgs(owner, ownerBalance, initialSupply);
+						});
+					});
+
+					describe("the sender has insufficient funds", () => {
+						const allowance = initialSupply - 1n;
+
+						beforeEach(async () => {
+							await token.connect(owner).approve(user, allowance);
+						});
+
+						it("the token owner has enough balance", async () => {
+							await expect(
+								token.connect(user).transferFrom(owner, other, initialSupply)
+							)
+								.to.revertedWithCustomError(token, "ERC20InsufficientAllowance")
+								.withArgs(user, allowance, initialSupply);
+						});
+
+						it("the token owner has not enough balance", async () => {
+							const value = allowance;
+							await token.connect(owner).transfer(user, value);
+							const ownerBalance = await token.balanceOf(owner);
+							await expect(
+								token.connect(user).transferFrom(owner, other, value)
+							)
+								.to.revertedWithCustomError(token, "ERC20InsufficientBalance")
+								.withArgs(owner, ownerBalance, value);
+						});
+					});
+
+					describe("the spender has unlimited allowance", () => {
+						let tx;
+						beforeEach(async () => {
+							await token.connect(owner).approve(user, ethers.MaxUint256);
+							tx = token.connect(user).transferFrom(owner, other, 1n);
+						});
+
+						it("does not decrease the spender allowance", async () => {
+							expect(await token.allowance(owner, user)).to.equal(
+								ethers.MaxUint256
 							);
 						});
 
-						it("reduces the spender allowance", async () => {
-							expect(await token.allowance(owner, user)).to.equal(0n);
-						});
-
-						it("emits a transfer event", async () => {
-							expect(tx)
-								.to.emit(token, "Transfer")
-								.withArgs(owner, other, value);
+						it("does not emit an approval event", async () => {
+							await expect(tx).to.not.emit(token, "Approval");
 						});
 					});
-
-					describe("the sender has insufficient funds", () => {});
 				});
 
-				describe("token recipient is a zero address", () => {});
+				it("token recipient is a zero address", async () => {
+					const value = initialSupply;
+					await token.connect(owner).approve(user, value);
+					await expect(
+						token
+							.connect(user)
+							.transferFrom(owner, ethers.ZeroAddress, value)
+					)
+						.to.be.revertedWithCustomError(token, "ERC20InvalidReceiver")
+						.withArgs(ethers.ZeroAddress);
+				});
 			});
-
-			describe("token owner is a zero address", () => {});
 		});
-
-		describe("approve", () => {});
 	});
 });
